@@ -20,10 +20,10 @@ on:
       runner:
         description: Runner image
         type: choice
-        default: windows-2025-vs2026
+        default: windows-2022
         options:
-          - windows-2025-vs2026
           - windows-2022
+          - windows-2025-vs2026
 
 permissions: {}
 
