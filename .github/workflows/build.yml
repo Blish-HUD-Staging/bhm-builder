@@ -1,6 +1,4 @@
-# Deployed as .github/workflows/build.yml in the public builder repo.
-# Runs untrusted module code. It must never gain secrets, a cache, or token permissions,
-# and SSRD treats everything this workflow produces as hostile.
+# Runs untrusted code: never add secrets, caches or token permissions.
 name: build
 run-name: ${{ inputs.request_id }}
 
@@ -19,17 +17,23 @@ on:
       manifest_path:
         description: Path to manifest.json, relative to the repo root
         required: true
+      runner:
+        description: Runner image
+        type: choice
+        default: windows-2025-vs2026
+        options:
+          - windows-2025-vs2026
+          - windows-2022
 
 permissions: {}
 
 jobs:
   build:
-    runs-on: windows-2025-vs2026
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 15
     steps:
       - name: Build module
         shell: pwsh
-        # Inputs arrive through env, never through ${{ }} in the script.
         env:
           REPO_URL: ${{ inputs.repo_url }}
           SOURCE_SHA: ${{ inputs.sha }}
@@ -56,7 +60,6 @@ jobs:
           git -C src submodule update --quiet --init --recursive
           $PSNativeCommandUseErrorActionPreference = $false
 
-          # Same layout rules as the legacy build: restore at the solution, build next to the manifest.
           $moduleDir = Split-Path (Join-Path $PWD 'src' $env:MANIFEST_PATH)
           $slnDir = $moduleDir
           if (-not (Get-ChildItem $moduleDir -Filter *.sln -File)) {
@@ -84,8 +87,7 @@ jobs:
           if ($modules.Count -ne 1) { throw "expected 1 .bhm, found $($modules.Count)" }
           Copy-Item $modules[0].FullName out/
 
-          # The .bhm decides success, as in the legacy build. Solutions can list projects that
-          # were never committed, which fails MSBuild after the module itself built.
+          # MSBuild can exit non-zero on stale solution entries after the .bhm is built.
           exit 0
 
       - name: Upload output
