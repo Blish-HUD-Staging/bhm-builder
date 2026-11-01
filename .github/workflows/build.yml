@@ -9,8 +9,11 @@ on:
         description: SSRD's ID for this build, used to find the run
         required: true
       repo_url:
-        description: HTTPS clone URL
-        required: true
+        description: HTTPS clone URL, when the source is public
+        required: false
+      source_url:
+        description: Short-lived link to a zip of the source, when it is not public
+        required: false
       sha:
         description: Full commit SHA resolved by SSRD
         required: true
@@ -36,6 +39,7 @@ jobs:
         shell: pwsh
         env:
           REPO_URL: ${{ inputs.repo_url }}
+          SOURCE_URL: ${{ inputs.source_url }}
           SOURCE_SHA: ${{ inputs.sha }}
           MANIFEST_PATH: ${{ inputs.manifest_path }}
           GIT_TERMINAL_PROMPT: "0"
@@ -43,7 +47,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
 
           if ($env:SOURCE_SHA -notmatch '^[0-9a-f]{40}$') { throw 'sha must be a full commit SHA' }
-          if ($env:REPO_URL -notmatch '^https://') { throw 'repo_url must use https' }
+          if (($env:REPO_URL + $env:SOURCE_URL) -notmatch '^https://') { throw 'repo_url or source_url must use https' }
           if ($env:MANIFEST_PATH -match '(^|[\\/])\.\.([\\/]|$)' -or [IO.Path]::IsPathRooted($env:MANIFEST_PATH)) {
             throw 'manifest_path must stay inside the repo'
           }
@@ -55,9 +59,16 @@ jobs:
           git config --global core.longpaths true
           git config --global protocol.file.allow never
           git config --global protocol.ext.allow never
-          git clone --quiet $env:REPO_URL src
-          git -C src checkout --quiet $env:SOURCE_SHA
-          git -C src submodule update --quiet --init --recursive
+          if ($env:SOURCE_URL) {
+            Invoke-WebRequest -Uri $env:SOURCE_URL -OutFile source.zip
+            New-Item -ItemType Directory src | Out-Null
+            # Git's tar comes first on PATH and can't read zip files.
+            & "$env:SystemRoot/System32/tar.exe" -xf source.zip -C src --strip-components=1
+          } else {
+            git clone --quiet $env:REPO_URL src
+            git -C src checkout --quiet $env:SOURCE_SHA
+            git -C src submodule update --quiet --init --recursive
+          }
           $PSNativeCommandUseErrorActionPreference = $false
 
           $moduleDir = Split-Path (Join-Path $PWD 'src' $env:MANIFEST_PATH)
