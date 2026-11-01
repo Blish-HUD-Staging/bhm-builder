@@ -62,7 +62,7 @@ jobs:
           if ($env:SOURCE_URL) {
             Invoke-WebRequest -Uri $env:SOURCE_URL -OutFile source.zip
             New-Item -ItemType Directory src | Out-Null
-            # Git's tar comes first on PATH and can't read zip files.
+            # Git's tar comes first on PATH and can't read zip files
             & "$env:SystemRoot/System32/tar.exe" -xf source.zip -C src --strip-components=1
           } else {
             git clone --quiet $env:REPO_URL src
@@ -98,7 +98,7 @@ jobs:
           if ($modules.Count -ne 1) { throw "expected 1 .bhm, found $($modules.Count)" }
           Copy-Item $modules[0].FullName out/
 
-          # MSBuild can exit non-zero on stale solution entries after the .bhm is built.
+          # MSBuild can exit non-zero on stale solution entries after the .bhm is built
           exit 0
 
       - name: Upload output
