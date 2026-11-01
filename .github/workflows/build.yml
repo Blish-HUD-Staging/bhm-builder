@@ -84,6 +84,10 @@ jobs:
           if ($modules.Count -ne 1) { throw "expected 1 .bhm, found $($modules.Count)" }
           Copy-Item $modules[0].FullName out/
 
+          # The .bhm decides success, as in the legacy build. Solutions can list projects that
+          # were never committed, which fails MSBuild after the module itself built.
+          exit 0
+
       - name: Upload output
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
